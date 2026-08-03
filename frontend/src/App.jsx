@@ -8,7 +8,7 @@ import MainLayout from "./layouts/MainLayout";
 
 import Home from "./pages/Home";
 import Destinations from "./pages/Destinations";
-import DestinationDetails from "./pages/DestinationDetails";
+import DestinationDetail from "./pages/DestinationDetail";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 
@@ -23,6 +23,7 @@ function App() {
 
         {/* =================================
             PUBLIC WEBSITE
+            Navbar + Footer from MainLayout
         ================================= */}
 
         <Route element={<MainLayout />}>
@@ -44,12 +45,17 @@ function App() {
 
           <Route
             path="/destinations/:id"
-            element={<DestinationDetails />}
+            element={<DestinationDetail />}
           />
 
           <Route
             path="/about"
             element={<About />}
+          />
+
+          <Route
+          path="/admin"
+          element={<AdminDashboard/>}
           />
 
           <Route
@@ -61,32 +67,32 @@ function App() {
 
 
         {/* =================================
-            ADMIN DASHBOARD
+            ADMIN WEBSITE
+            No public Navbar/Footer
         ================================= */}
 
-      {/* =================================
-    ADMIN DASHBOARD
-================================= */}
+        <Route
+          path="/admin"
+          element={<AdminDashboard />}
+        />
 
-<Route
-  path="/admin"
-  element={<AdminDashboard />}
-/>
+        <Route
+          path="/admin/destinations"
+          element={<AdminDestinations />}
+        />
 
-<Route
-  path="/admin/destinations"
-  element={<AdminDestinations />}
-/>
+        {/* Add Destination */}
+        <Route
+          path="/admin/destinations/add"
+          element={<DestinationForm />}
+        />
 
-<Route
-  path="/admin/destinations/new"
-  element={<DestinationForm />}
-/>
+        {/* Edit Destination */}
+        <Route
+          path="/admin/destinations/edit/:id"
+          element={<DestinationForm />}
+        />
 
-<Route
-  path="/admin/destinations/edit/:id"
-  element={<DestinationForm />}
-/>
       </Routes>
     </BrowserRouter>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
 
 const DestinationForm = () => {
   const { id } = useParams();
@@ -15,6 +15,8 @@ const DestinationForm = () => {
     description: "",
     imageUrl: "",
     category: "",
+    rating: "",
+    popularity: "",
     featured: false,
   });
 
@@ -49,17 +51,13 @@ const DestinationForm = () => {
           description: destination.description || "",
           imageUrl: destination.imageUrl || "",
           category: destination.category || "",
+          rating: destination.rating ?? "",
+          popularity: destination.popularity ?? "",
           featured: destination.featured || false,
         });
       } catch (err) {
-        console.error(
-          "Error fetching destination:",
-          err
-        );
-
-        setError(
-          "Unable to load this destination."
-        );
+        console.error("Error fetching destination:", err);
+        setError("Unable to load this destination.");
       } finally {
         setFetching(false);
       }
@@ -77,10 +75,7 @@ const DestinationForm = () => {
 
     setFormData((previousData) => ({
       ...previousData,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
@@ -95,28 +90,30 @@ const DestinationForm = () => {
       setLoading(true);
       setError("");
 
+      const dataToSend = {
+        ...formData,
+        rating: Number(formData.rating),
+        popularity: Number(formData.popularity),
+      };
+
       if (isEditMode) {
         // UPDATE DESTINATION
         await axios.put(
           `http://localhost:5000/api/destinations/${id}`,
-          formData
+          dataToSend
         );
       } else {
         // ADD DESTINATION
         await axios.post(
           "http://localhost:5000/api/destinations",
-          formData
+          dataToSend
         );
       }
 
-      // Go back to destinations
+      // Return to admin destination list
       navigate("/admin/destinations");
-
     } catch (err) {
-      console.error(
-        "Error saving destination:",
-        err
-      );
+      console.error("Error saving destination:", err);
 
       setError(
         err.response?.data?.message ||
@@ -134,17 +131,13 @@ const DestinationForm = () => {
   if (fetching) {
     return (
       <div className="min-h-screen bg-[#f7f7f5] flex items-center justify-center">
-
         <div className="text-center">
-
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-amber-400" />
 
           <p className="mt-5 text-gray-500">
             Loading destination...
           </p>
-
         </div>
-
       </div>
     );
   }
@@ -161,18 +154,13 @@ const DestinationForm = () => {
         {/* Logo */}
 
         <div className="flex h-24 items-center px-8">
-
           <Link
             to="/"
             className="text-2xl font-bold tracking-wide"
           >
-            Wander<span className="text-amber-400">
-              ly
-            </span>
+            Wander<span className="text-amber-400">ly</span>
           </Link>
-
         </div>
-
 
         {/* Navigation */}
 
@@ -197,7 +185,6 @@ const DestinationForm = () => {
           </Link>
 
         </nav>
-
 
         {/* Bottom */}
 
@@ -287,11 +274,9 @@ const DestinationForm = () => {
             {/* Error */}
 
             {error && (
-
               <div className="mb-8 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
                 {error}
               </div>
-
             )}
 
 
@@ -302,9 +287,7 @@ const DestinationForm = () => {
               className="rounded-[2rem] bg-white p-6 shadow-sm md:p-10"
             >
 
-              {/* ==================================
-                  BASIC INFORMATION
-              ================================== */}
+              {/* BASIC INFORMATION */}
 
               <div>
 
@@ -427,9 +410,7 @@ const DestinationForm = () => {
               </div>
 
 
-              {/* ==================================
-                  IMAGE
-              ================================== */}
+              {/* IMAGE */}
 
               <div className="mt-10 border-t border-gray-100 pt-10">
 
@@ -461,6 +442,66 @@ const DestinationForm = () => {
                 </div>
 
 
+                {/* Rating and Popularity */}
+
+                <div className="mt-6 grid gap-6 md:grid-cols-2">
+
+                  {/* Rating */}
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-semibold">
+                      Rating
+                    </label>
+
+                    <input
+                      type="number"
+                      name="rating"
+                      value={formData.rating}
+                      onChange={handleChange}
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      placeholder="e.g. 4.8"
+                      required
+                      className="w-full rounded-2xl border border-gray-200 bg-[#f7f7f5] px-5 py-4 text-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                    />
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Enter a rating between 0 and 5.
+                    </p>
+
+                  </div>
+
+
+                  {/* Popularity */}
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-semibold">
+                      Popularity
+                    </label>
+
+                    <input
+                      type="number"
+                      name="popularity"
+                      value={formData.popularity}
+                      onChange={handleChange}
+                      min="0"
+                      placeholder="e.g. 95"
+                      required
+                      className="w-full rounded-2xl border border-gray-200 bg-[#f7f7f5] px-5 py-4 text-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                    />
+
+                    <p className="mt-2 text-xs text-gray-400">
+                      Enter a popularity score.
+                    </p>
+
+                  </div>
+
+                </div>
+
+
                 {/* Image Preview */}
 
                 {formData.imageUrl && (
@@ -472,8 +513,7 @@ const DestinationForm = () => {
                       alt="Destination preview"
                       className="h-64 w-full object-cover"
                       onError={(e) => {
-                        e.currentTarget.style.display =
-                          "none";
+                        e.currentTarget.style.display = "none";
                       }}
                     />
 
@@ -484,9 +524,7 @@ const DestinationForm = () => {
               </div>
 
 
-              {/* ==================================
-                  DESCRIPTION
-              ================================== */}
+              {/* DESCRIPTION */}
 
               <div className="mt-10 border-t border-gray-100 pt-10">
 
@@ -520,9 +558,7 @@ const DestinationForm = () => {
               </div>
 
 
-              {/* ==================================
-                  FEATURED
-              ================================== */}
+              {/* FEATURED */}
 
               <div className="mt-10 border-t border-gray-100 pt-10">
 
@@ -544,8 +580,7 @@ const DestinationForm = () => {
 
                     <p className="mt-1 text-sm leading-relaxed text-gray-500">
                       Mark this destination as featured to
-                      highlight it in the popular destinations
-                      slider on the website.
+                      highlight it on the website.
                     </p>
 
                   </div>
@@ -555,9 +590,7 @@ const DestinationForm = () => {
               </div>
 
 
-              {/* ==================================
-                  FORM ACTIONS
-              ================================== */}
+              {/* FORM ACTIONS */}
 
               <div className="mt-10 flex flex-col-reverse gap-4 border-t border-gray-100 pt-8 sm:flex-row sm:justify-end">
 

@@ -1,36 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const Destinations = () => {
-  // =====================================================
-  // URL SEARCH PARAMETERS
-  // =====================================================
-
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const categoryFromUrl = searchParams.get("category");
-
-  // =====================================================
-  // STATE
-  // =====================================================
-
   const [destinations, setDestinations] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // =====================================================
-  // ACTIVE CATEGORY
-  // =====================================================
-
-  const activeCategory = categoryFromUrl
-    ? categoryFromUrl.charAt(0).toUpperCase() +
-      categoryFromUrl.slice(1)
-    : "All";
 
   // =====================================================
   // FETCH DESTINATIONS FROM BACKEND
@@ -67,9 +47,6 @@ const Destinations = () => {
       (destination) => destination.featured === true
     );
 
-    // If there are at least 3 featured destinations,
-    // use only featured destinations for the slider.
-    // Otherwise, use all destinations.
     if (featured.length >= 3) {
       return featured;
     }
@@ -192,13 +169,11 @@ const Destinations = () => {
       const category =
         destination.category?.toLowerCase() || "";
 
-      // Search matching
       const matchesSearch =
         destinationName.includes(searchValue) ||
         country.includes(searchValue) ||
         location.includes(searchValue);
 
-      // Category matching
       const matchesCategory =
         activeCategory === "All" ||
         category === activeCategory.toLowerCase();
@@ -216,31 +191,6 @@ const Destinations = () => {
   const rightDestination = getDestination(1);
 
   // =====================================================
-  // HANDLE CATEGORY CHANGE
-  // =====================================================
-
-  const handleCategoryChange = (category) => {
-    if (category === "All") {
-      // Remove category from URL
-      setSearchParams({});
-    } else {
-      // Add selected category to URL
-      setSearchParams({
-        category: category.toLowerCase(),
-      });
-    }
-  };
-
-  // =====================================================
-  // CLEAR FILTERS
-  // =====================================================
-
-  const clearFilters = () => {
-    setSearch("");
-    setSearchParams({});
-  };
-
-  // =====================================================
   // RETURN UI
   // =====================================================
 
@@ -252,8 +202,6 @@ const Destinations = () => {
       ================================================= */}
 
       <section className="relative overflow-hidden bg-[#050914] pb-20 pt-32">
-
-        {/* Decorative Background Glow */}
 
         <div className="pointer-events-none absolute left-1/2 top-20 h-96 w-96 -translate-x-1/2 rounded-full bg-amber-400/10 blur-3xl" />
 
@@ -350,8 +298,6 @@ const Destinations = () => {
                         alt={centerDestination.name}
                         className="h-full w-full object-cover transition duration-700"
                       />
-
-                      {/* Gradient */}
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
@@ -580,7 +526,7 @@ const Destinations = () => {
 
               <button
                 key={category}
-                onClick={() => handleCategoryChange(category)}
+                onClick={() => setActiveCategory(category)}
                 className={`rounded-full px-6 py-3 text-sm font-medium transition-all duration-300 ${
                   activeCategory === category
                     ? "bg-[#050914] text-white shadow-lg"
@@ -661,7 +607,10 @@ const Destinations = () => {
                 </p>
 
                 <button
-                  onClick={clearFilters}
+                  onClick={() => {
+                    setSearch("");
+                    setActiveCategory("All");
+                  }}
                   className="mt-7 rounded-full bg-[#050914] px-7 py-3 text-sm font-semibold text-white transition hover:bg-amber-400 hover:text-[#050914]"
                 >
                   Explore all destinations
@@ -746,6 +695,25 @@ const Destinations = () => {
                           <h4 className="mt-3 text-2xl font-bold text-[#101828] transition-colors group-hover:text-amber-500">
                             {destination.name}
                           </h4>
+
+
+                          {/* Rating and Popularity */}
+
+                          <div className="mt-4 flex flex-wrap gap-3">
+
+                            {/* Rating */}
+
+                            <span className="rounded-full bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-600">
+                              ★ {destination.rating || 0}/5
+                            </span>
+
+                            {/* Popularity */}
+
+                            <span className="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600">
+                              Popularity: {destination.popularity || 0}
+                            </span>
+
+                          </div>
 
 
                           {/* Description */}

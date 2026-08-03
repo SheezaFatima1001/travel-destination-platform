@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 const DestinationCard = ({ destination }) => {
   return (
-    <article className="group relative overflow-hidden rounded-3xl bg-white shadow-sm transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+    <article className="group relative overflow-hidden rounded-3xl bg-white shadow-sm transition-all duration-500 hover:shadow-2xl">
 
       {/* Image */}
       <div className="relative h-80 overflow-hidden">
@@ -38,7 +38,6 @@ const DestinationCard = ({ destination }) => {
             {destination.name}
           </h3>
         </div>
-
       </div>
 
       {/* Card Content */}
@@ -52,12 +51,25 @@ const DestinationCard = ({ destination }) => {
           {destination.description}
         </p>
 
+        {/* Rating and Popularity */}
+        <div className="mt-4 flex gap-3">
+
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700">
+            ★ {destination.rating || 0}
+          </span>
+
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
+            Popularity {destination.popularity || 0}
+          </span>
+
+        </div>
+
+        {/* Explore Destination */}
         <Link
           to={`/destinations/${destination._id}`}
-          className="mt-5 inline-flex items-center font-semibold text-gray-900 transition-colors hover:text-amber-500"
+          className="mt-5 inline-block font-semibold text-gray-900 transition-colors hover:text-amber-500"
         >
           Explore destination
-
           <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">
             →
           </span>

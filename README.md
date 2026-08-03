@@ -67,6 +67,8 @@ A full-stack Travel \& Tourism Experience Platform built using the MERN Stack.
 \- Update destinations
 
 \- Delete destinations
+\- Rating of destinations
+\- Popularity of destinationd
 
 \- Retrieve destinations from MongoDB
 

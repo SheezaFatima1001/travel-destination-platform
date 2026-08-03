@@ -2,19 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 
-const AdminDestinations = () => {
+const AdminDashboard = () => {
   const navigate = useNavigate();
 
   const [destinations, setDestinations] = useState([]);
-  const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
-  // ==========================================
+  // =====================================================
   // FETCH DESTINATIONS
-  // ==========================================
+  // =====================================================
 
   const fetchDestinations = async () => {
     try {
@@ -28,102 +26,123 @@ const AdminDestinations = () => {
       setDestinations(response.data);
     } catch (err) {
       console.error("Error fetching destinations:", err);
-      setError("Unable to load destinations.");
+
+      setError(
+        "Unable to load destinations. Please make sure the backend server is running."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // =====================================================
+  // LOAD DATA
+  // =====================================================
+
   useEffect(() => {
     fetchDestinations();
   }, []);
 
-  // ==========================================
-  // CATEGORIES
-  // ==========================================
-
-  const categories = useMemo(() => {
-    const uniqueCategories = [
-      ...new Set(
-        destinations
-          .map((destination) => destination.category)
-          .filter(Boolean)
-      ),
-    ];
-
-    return ["All", ...uniqueCategories];
-  }, [destinations]);
-
-  // ==========================================
-  // FILTER DESTINATIONS
-  // ==========================================
-
-  const filteredDestinations = useMemo(() => {
-    return destinations.filter((destination) => {
-      const searchValue = search.toLowerCase().trim();
-
-      const name =
-        destination.name?.toLowerCase() || "";
-
-      const country =
-        destination.country?.toLowerCase() || "";
-
-      const location =
-        destination.location?.toLowerCase() || "";
-
-      const category =
-        destination.category?.toLowerCase() || "";
-
-      const matchesSearch =
-        name.includes(searchValue) ||
-        country.includes(searchValue) ||
-        location.includes(searchValue);
-
-      const matchesCategory =
-        activeCategory === "All" ||
-        category === activeCategory.toLowerCase();
-
-      return matchesSearch && matchesCategory;
-    });
-  }, [destinations, search, activeCategory]);
-
-  // ==========================================
+  // =====================================================
   // DELETE DESTINATION
-  // ==========================================
+  // =====================================================
 
-  const handleDelete = async (id, name) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${name}"?`
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this destination?"
     );
 
-    if (!confirmed) {
+    if (!confirmDelete) {
       return;
     }
 
     try {
+      setDeletingId(id);
+      setError("");
+
       await axios.delete(
         `http://localhost:5000/api/destinations/${id}`
       );
 
-      setDestinations((prevDestinations) =>
-        prevDestinations.filter(
+      // Remove deleted destination from current list
+      setDestinations((previousDestinations) =>
+        previousDestinations.filter(
           (destination) => destination._id !== id
         )
       );
-
-      alert("Destination deleted successfully.");
     } catch (err) {
       console.error("Error deleting destination:", err);
-      alert("Unable to delete destination.");
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to delete destination. Please try again."
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
+
+  // =====================================================
+  // DASHBOARD STATISTICS
+  // =====================================================
+
+  const totalDestinations = destinations.length;
+
+  const featuredDestinations = destinations.filter(
+    (destination) => destination.featured === true
+  ).length;
+
+  const totalCategories = new Set(
+    destinations
+      .map((destination) => destination.category)
+      .filter(Boolean)
+  ).size;
+
+  const averageRating = useMemo(() => {
+    if (destinations.length === 0) {
+      return "0.0";
+    }
+
+    const validRatings = destinations
+      .map((destination) => Number(destination.rating))
+      .filter((rating) => !isNaN(rating));
+
+    if (validRatings.length === 0) {
+      return "0.0";
+    }
+
+    const totalRating = validRatings.reduce(
+      (sum, rating) => sum + rating,
+      0
+    );
+
+    return (totalRating / validRatings.length).toFixed(1);
+  }, [destinations]);
+
+  // =====================================================
+  // RECENT DESTINATIONS
+  // =====================================================
+
+  const recentDestinations = useMemo(() => {
+    return [...destinations]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0) -
+          new Date(a.createdAt || 0)
+      )
+      .slice(0, 5);
+  }, [destinations]);
+
+  // =====================================================
+  // RETURN UI
+  // =====================================================
 
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-[#101828]">
 
-      {/* ==========================================
+      {/* =================================================
           SIDEBAR
-      ========================================== */}
+      ================================================= */}
 
       <aside className="fixed left-0 top-0 hidden h-screen w-64 bg-[#050914] text-white lg:block">
 
@@ -135,7 +154,9 @@ const AdminDestinations = () => {
             to="/"
             className="text-2xl font-bold tracking-wide"
           >
-            Wander<span className="text-amber-400">ly</span>
+            Wander<span className="text-amber-400">
+              ly
+            </span>
           </Link>
 
         </div>
@@ -153,17 +174,16 @@ const AdminDestinations = () => {
 
           <Link
             to="/admin"
-            className="flex items-center gap-4 rounded-2xl px-5 py-4 text-white/60 transition hover:bg-white/5 hover:text-white"
+            className="flex items-center rounded-2xl bg-amber-400 px-5 py-4 font-semibold text-[#050914]"
           >
             Dashboard
           </Link>
-
 
           {/* Destinations */}
 
           <Link
             to="/admin/destinations"
-            className="mt-2 flex items-center gap-4 rounded-2xl bg-amber-400 px-5 py-4 font-semibold text-[#050914]"
+            className="mt-2 flex items-center rounded-2xl px-5 py-4 text-white/60 transition hover:bg-white/5 hover:text-white"
           >
             Destinations
           </Link>
@@ -187,17 +207,19 @@ const AdminDestinations = () => {
       </aside>
 
 
-      {/* ==========================================
+      {/* =================================================
           MAIN CONTENT
-      ========================================== */}
+      ================================================= */}
 
       <main className="lg:ml-64">
 
-        {/* Top Navbar */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
         <header className="sticky top-0 z-40 border-b border-gray-200 bg-[#f7f7f5]/90 backdrop-blur-xl">
 
-          <div className="flex h-20 items-center justify-between px-6 lg:px-10">
+          <div className="flex min-h-20 items-center justify-between gap-5 px-6 lg:px-10">
 
             <div>
 
@@ -206,198 +228,68 @@ const AdminDestinations = () => {
               </p>
 
               <h1 className="text-xl font-bold">
-                Destinations
+                Dashboard
               </h1>
 
             </div>
 
-
-            <button
-              onClick={() =>
-                navigate("/admin/destinations/new")
-              }
+            <Link
+              to="/admin/destinations/new"
               className="rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-[#050914] transition hover:bg-amber-300"
             >
-              Add New Destination
-            </button>
+              Add Destination
+            </Link>
 
           </div>
 
         </header>
 
 
-        {/* ==========================================
-            CONTENT
-        ========================================== */}
+        {/* =================================================
+            PAGE CONTENT
+        ================================================= */}
 
         <div className="px-6 py-10 lg:px-10 lg:py-12">
 
-          {/* Page Heading */}
+          <div className="mx-auto max-w-7xl">
 
-          <div className="mb-10">
+            {/* Page Introduction */}
 
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-500">
-              Content Management
-            </p>
+            <div className="mb-10">
 
-            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-              Manage Destinations
-            </h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-500">
+                Overview
+              </p>
 
-            <p className="mt-3 max-w-2xl text-gray-500">
-              Add, update, or remove destinations displayed
-              on your Wanderly travel website.
-            </p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+                Welcome to your dashboard
+              </h2>
 
-          </div>
-
-
-          {/* ==========================================
-              SEARCH AND FILTER
-          ========================================== */}
-
-          <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-
-              {/* Search */}
-
-              <div className="w-full lg:max-w-xl">
-
-                <input
-                  type="text"
-                  placeholder="Search by destination, country, or location..."
-                  value={search}
-                  onChange={(e) =>
-                    setSearch(e.target.value)
-                  }
-                  className="w-full rounded-full border border-gray-200 bg-[#f7f7f5] px-6 py-4 text-sm outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
-                />
-
-              </div>
-
-
-              {/* Result Count */}
-
-              <p className="text-sm text-gray-500">
-
-                <span className="font-semibold text-[#101828]">
-                  {filteredDestinations.length}
-                </span>{" "}
-
-                {filteredDestinations.length === 1
-                  ? "destination"
-                  : "destinations"}
-
+              <p className="mt-3 max-w-2xl text-gray-500">
+                Manage your travel destinations and monitor
+                your destination collection from one place.
               </p>
 
             </div>
 
 
-            {/* Categories */}
+            {/* =================================================
+                ERROR MESSAGE
+            ================================================= */}
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            {error && (
 
-              {categories.map((category) => (
+              <div className="mb-8 flex items-center justify-between gap-5 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
 
-                <button
-                  key={category}
-                  onClick={() =>
-                    setActiveCategory(category)
-                  }
-                  className={`rounded-full px-5 py-2.5 text-sm font-medium transition ${
-                    activeCategory === category
-                      ? "bg-[#050914] text-white"
-                      : "bg-[#f7f7f5] text-gray-500 hover:bg-amber-400 hover:text-[#050914]"
-                  }`}
-                >
-                  {category}
-                </button>
-
-              ))}
-
-            </div>
-
-          </div>
-
-
-          {/* ==========================================
-              LOADING
-          ========================================== */}
-
-          {loading && (
-
-            <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-
-              {[1, 2, 3].map((item) => (
-
-                <div
-                  key={item}
-                  className="h-[450px] animate-pulse rounded-[2rem] bg-white"
-                />
-
-              ))}
-
-            </div>
-
-          )}
-
-
-          {/* ==========================================
-              ERROR
-          ========================================== */}
-
-          {!loading && error && (
-
-            <div className="mt-10 rounded-[2rem] bg-white p-16 text-center">
-
-              <h3 className="text-xl font-bold text-red-500">
-                Unable to Load Destinations
-              </h3>
-
-              <p className="mt-3 text-gray-500">
-                {error}
-              </p>
-
-              <button
-                onClick={fetchDestinations}
-                className="mt-6 rounded-full bg-[#050914] px-6 py-3 text-sm font-semibold text-white transition hover:bg-amber-400 hover:text-[#050914]"
-              >
-                Try Again
-              </button>
-
-            </div>
-
-          )}
-
-
-          {/* ==========================================
-              NO RESULTS
-          ========================================== */}
-
-          {!loading &&
-            !error &&
-            filteredDestinations.length === 0 && (
-
-              <div className="mt-10 rounded-[2rem] bg-white px-6 py-24 text-center">
-
-                <h3 className="text-2xl font-bold">
-                  No Destinations Found
-                </h3>
-
-                <p className="mx-auto mt-3 max-w-md text-gray-500">
-                  No destinations match your current
-                  search or category filter.
+                <p>
+                  {error}
                 </p>
 
                 <button
-                  onClick={() => {
-                    setSearch("");
-                    setActiveCategory("All");
-                  }}
-                  className="mt-7 rounded-full bg-[#050914] px-7 py-3 text-sm font-semibold text-white transition hover:bg-amber-400 hover:text-[#050914]"
+                  onClick={fetchDestinations}
+                  className="font-semibold underline"
                 >
-                  Clear Filters
+                  Try again
                 </button>
 
               </div>
@@ -405,122 +297,495 @@ const AdminDestinations = () => {
             )}
 
 
-          {/* ==========================================
-              DESTINATION GRID
-          ========================================== */}
+            {/* =================================================
+                STATISTICS
+            ================================================= */}
 
-          {!loading &&
-            !error &&
-            filteredDestinations.length > 0 && (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-              <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {/* Total Destinations */}
 
-                {filteredDestinations.map(
-                  (destination) => (
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
 
-                    <article
-                      key={destination._id}
-                      className="group overflow-hidden rounded-[2rem] bg-white shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl"
-                    >
+                <p className="text-sm font-medium text-gray-500">
+                  Total Destinations
+                </p>
 
-                      {/* Image */}
+                <div className="mt-5 flex items-end justify-between">
 
-                      <div className="relative h-64 overflow-hidden">
+                  <h3 className="text-4xl font-bold">
+                    {loading ? "—" : totalDestinations}
+                  </h3>
 
-                        <img
-                          src={destination.imageUrl}
-                          alt={destination.name}
-                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                        />
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    Places
+                  </span>
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                </div>
 
-
-                        {/* Featured */}
-
-                        {destination.featured && (
-
-                          <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#050914]">
-                            Featured
-                          </span>
-
-                        )}
-
-                      </div>
-
-
-                      {/* Card Content */}
-
-                      <div className="p-6">
-
-                        <div className="flex items-center justify-between gap-3">
-
-                          <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600">
-                            {destination.category}
-                          </span>
-
-                          <span className="text-xs text-gray-400">
-                            {destination.country}
-                          </span>
-
-                        </div>
-
-
-                        <h3 className="mt-4 text-2xl font-bold">
-                          {destination.name}
-                        </h3>
-
-
-                        <p className="mt-2 text-sm text-gray-400">
-                          {destination.location}
-                        </p>
-
-
-                        <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-gray-500">
-                          {destination.description}
-                        </p>
-
-
-                        {/* Actions */}
-
-                        <div className="mt-6 flex gap-3 border-t border-gray-100 pt-5">
-
-                          <button
-                            onClick={() =>
-                              navigate(
-                                `/admin/destinations/edit/${destination._id}`
-                              )
-                            }
-                            className="flex-1 rounded-full border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition hover:border-amber-400 hover:bg-amber-400 hover:text-[#050914]"
-                          >
-                            Edit
-                          </button>
-
-
-                          <button
-                            onClick={() =>
-                              handleDelete(
-                                destination._id,
-                                destination.name
-                              )
-                            }
-                            className="flex-1 rounded-full border border-red-100 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-500 hover:text-white"
-                          >
-                            Delete
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    </article>
-
-                  )
-                )}
+                <p className="mt-4 text-sm text-gray-400">
+                  All destinations in MongoDB
+                </p>
 
               </div>
 
-            )}
+
+              {/* Featured */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Featured Destinations
+                </p>
+
+                <div className="mt-5 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {loading ? "—" : featuredDestinations}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    Featured
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Highlighted on the website
+                </p>
+
+              </div>
+
+
+              {/* Categories */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Categories
+                </p>
+
+                <div className="mt-5 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {loading ? "—" : totalCategories}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    Types
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Different travel categories
+                </p>
+
+              </div>
+
+
+              {/* Average Rating */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Average Rating
+                </p>
+
+                <div className="mt-5 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {loading ? "—" : averageRating}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    / 5
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Average destination rating
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                DESTINATION MANAGEMENT
+            ================================================= */}
+
+            <div className="mt-12">
+
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+
+                <div>
+
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-500">
+                    Management
+                  </p>
+
+                  <h3 className="mt-2 text-2xl font-bold">
+                    Destination Collection
+                  </h3>
+
+                </div>
+
+                <Link
+                  to="/admin/destinations"
+                  className="text-sm font-semibold text-gray-500 transition hover:text-amber-500"
+                >
+                  View all destinations →
+                </Link>
+
+              </div>
+
+
+              {/* =================================================
+                  LOADING
+              ================================================= */}
+
+              {loading ? (
+
+                <div className="rounded-[2rem] bg-white p-10 text-center shadow-sm">
+
+                  <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-amber-400" />
+
+                  <p className="mt-5 text-gray-500">
+                    Loading destinations...
+                  </p>
+
+                </div>
+
+              ) : recentDestinations.length === 0 ? (
+
+                /* =================================================
+                    EMPTY STATE
+                ================================================= */
+
+                <div className="rounded-[2rem] bg-white px-6 py-20 text-center shadow-sm">
+
+                  <h3 className="text-2xl font-bold">
+                    No destinations yet
+                  </h3>
+
+                  <p className="mx-auto mt-3 max-w-md text-gray-500">
+                    Start building your destination collection
+                    by adding your first destination.
+                  </p>
+
+                  <Link
+                    to="/admin/destinations/new"
+                    className="mt-7 inline-flex rounded-full bg-amber-400 px-7 py-3 font-semibold text-[#050914] transition hover:bg-amber-300"
+                  >
+                    Add Your First Destination
+                  </Link>
+
+                </div>
+
+              ) : (
+
+                /* =================================================
+                    DESTINATION TABLE
+                ================================================= */
+
+                <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
+
+                  <div className="overflow-x-auto">
+
+                    <table className="w-full min-w-[850px]">
+
+                      <thead>
+
+                        <tr className="border-b border-gray-100 text-left">
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Destination
+                          </th>
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Category
+                          </th>
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Rating
+                          </th>
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Popularity
+                          </th>
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Status
+                          </th>
+
+                          <th className="px-6 py-5 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                            Actions
+                          </th>
+
+                        </tr>
+
+                      </thead>
+
+
+                      <tbody>
+
+                        {recentDestinations.map(
+                          (destination) => (
+
+                            <tr
+                              key={destination._id}
+                              className="border-b border-gray-100 last:border-0"
+                            >
+
+                              {/* Destination */}
+
+                              <td className="px-6 py-5">
+
+                                <div className="flex items-center gap-4">
+
+                                  <img
+                                    src={destination.imageUrl}
+                                    alt={destination.name}
+                                    className="h-14 w-14 rounded-xl object-cover"
+                                  />
+
+                                  <div>
+
+                                    <p className="font-semibold text-[#101828]">
+                                      {destination.name}
+                                    </p>
+
+                                    <p className="mt-1 text-sm text-gray-400">
+                                      {destination.location},{" "}
+                                      {destination.country}
+                                    </p>
+
+                                  </div>
+
+                                </div>
+
+                              </td>
+
+
+                              {/* Category */}
+
+                              <td className="px-6 py-5">
+
+                                <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600">
+                                  {destination.category}
+                                </span>
+
+                              </td>
+
+
+                              {/* Rating */}
+
+                              <td className="px-6 py-5">
+
+                                <span className="font-semibold">
+                                  {destination.rating
+                                    ? Number(
+                                        destination.rating
+                                      ).toFixed(1)
+                                    : "0.0"}
+                                </span>
+
+                                <span className="ml-1 text-amber-500">
+                                  ★
+                                </span>
+
+                              </td>
+
+
+                              {/* Popularity */}
+
+                              <td className="px-6 py-5">
+
+                                <span className="font-semibold">
+                                  {destination.popularity || 0}
+                                </span>
+
+                              </td>
+
+
+                              {/* Status */}
+
+                              <td className="px-6 py-5">
+
+                                {destination.featured ? (
+
+                                  <span className="rounded-full bg-amber-400/15 px-3 py-1.5 text-xs font-semibold text-amber-600">
+                                    Featured
+                                  </span>
+
+                                ) : (
+
+                                  <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
+                                    Standard
+                                  </span>
+
+                                )}
+
+                              </td>
+
+
+                              {/* Actions */}
+
+                              <td className="px-6 py-5">
+
+                                <div className="flex items-center gap-3">
+
+                                  <button
+                                    onClick={() =>
+                                      navigate(
+                                        `/admin/destinations/edit/${destination._id}`
+                                      )
+                                    }
+                                    className="text-sm font-semibold text-gray-600 transition hover:text-amber-500"
+                                  >
+                                    Edit
+                                  </button>
+
+                                  <button
+                                    onClick={() =>
+                                      handleDelete(
+                                        destination._id
+                                      )
+                                    }
+                                    disabled={
+                                      deletingId ===
+                                      destination._id
+                                    }
+                                    className="text-sm font-semibold text-red-500 transition hover:text-red-600 disabled:opacity-50"
+                                  >
+                                    {deletingId ===
+                                    destination._id
+                                      ? "Deleting..."
+                                      : "Delete"}
+                                  </button>
+
+                                </div>
+
+                              </td>
+
+                            </tr>
+
+                          )
+                        )}
+
+                      </tbody>
+
+                    </table>
+
+                  </div>
+
+                </div>
+
+              )}
+
+            </div>
+
+
+            {/* =================================================
+                QUICK ACTIONS
+            ================================================= */}
+
+            <div className="mt-12">
+
+              <h3 className="text-2xl font-bold">
+                Quick Actions
+              </h3>
+
+              <div className="mt-6 grid gap-5 md:grid-cols-3">
+
+                {/* Add Destination */}
+
+                <Link
+                  to="/admin/destinations/new"
+                  className="group rounded-[2rem] bg-[#050914] p-7 text-white transition hover:-translate-y-1 hover:shadow-xl"
+                >
+
+                  <p className="text-sm font-semibold text-amber-400">
+                    Destination Management
+                  </p>
+
+                  <h4 className="mt-4 text-xl font-bold">
+                    Add New Destination
+                  </h4>
+
+                  <p className="mt-3 text-sm leading-6 text-white/50">
+                    Create a new destination and make it
+                    available on the website.
+                  </p>
+
+                  <p className="mt-6 font-semibold text-amber-400">
+                    Add destination →
+                  </p>
+
+                </Link>
+
+
+                {/* Manage Destinations */}
+
+                <Link
+                  to="/admin/destinations"
+                  className="group rounded-[2rem] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
+
+                  <p className="text-sm font-semibold text-amber-500">
+                    Destination Management
+                  </p>
+
+                  <h4 className="mt-4 text-xl font-bold">
+                    Manage Destinations
+                  </h4>
+
+                  <p className="mt-3 text-sm leading-6 text-gray-500">
+                    View, edit, update, or remove destinations
+                    from your collection.
+                  </p>
+
+                  <p className="mt-6 font-semibold text-[#101828]">
+                    Manage collection →
+                  </p>
+
+                </Link>
+
+
+                {/* View Website */}
+
+                <Link
+                  to="/destinations"
+                  className="group rounded-[2rem] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                >
+
+                  <p className="text-sm font-semibold text-amber-500">
+                    Website
+                  </p>
+
+                  <h4 className="mt-4 text-xl font-bold">
+                    View Live Destinations
+                  </h4>
+
+                  <p className="mt-3 text-sm leading-6 text-gray-500">
+                    See how your destinations appear to
+                    visitors on the main website.
+                  </p>
+
+                  <p className="mt-6 font-semibold text-[#101828]">
+                    Visit website →
+                  </p>
+
+                </Link>
+
+              </div>
+
+            </div>
+
+          </div>
 
         </div>
 
@@ -530,4 +795,4 @@ const AdminDestinations = () => {
   );
 };
 
-export default AdminDestinations;
+export default AdminDashboard;

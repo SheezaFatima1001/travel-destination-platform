@@ -5,13 +5,17 @@ const {
     addDestination,
     getDestinationById,
     updateDestination,
-    deleteDestination
+    deleteDestination,
+    getDestinationsByCategory
 } = require("../controllers/destinationController");
 
 const router = express.Router();
 
 // Get all destinations
 router.get("/", getDestinations);
+
+// Get destinations by category
+router.get("/category/:category", getDestinationsByCategory);
 
 // Add a destination
 router.post("/", addDestination);

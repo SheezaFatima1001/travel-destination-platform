@@ -59,6 +59,14 @@ const Navbar = () => {
               Contact
             </Link>
 
+
+ {/* Admin */}
+            <Link
+              to="/admin"
+              className="text-white transition-colors hover:text-amber-400"
+            >
+              Admin
+            </Link>
             {/* Explore Now */}
             <Link
               to="/destinations"

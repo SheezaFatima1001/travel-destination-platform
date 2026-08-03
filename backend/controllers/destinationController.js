@@ -103,10 +103,35 @@ const deleteDestination = async (req, res) => {
     }
 };
 
+// Get destinations by category
+const getDestinationsByCategory = async (req, res) => {
+    try {
+        const { category } = req.params;
+
+        const destinations = await Destination.find({
+            category: {
+                $regex: new RegExp(`^${category}$`, "i")
+            }
+        });
+
+        res.status(200).json(destinations);
+    } catch (error) {
+        console.error(
+            "Error fetching destinations by category:",
+            error
+        );
+
+        res.status(500).json({
+            message: "Failed to fetch destinations by category"
+        });
+    }
+};
+
 module.exports = {
     getDestinations,
     addDestination,
     getDestinationById,
     updateDestination,
-    deleteDestination
+    deleteDestination,
+    getDestinationsByCategory
 };

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
-
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch destinations from MongoDB
+  // ==========================================
+  // FETCH DESTINATIONS FROM MONGODB
+  // ==========================================
+
   const fetchDestinations = async () => {
     try {
       setLoading(true);
@@ -32,15 +33,17 @@ const AdminDashboard = () => {
     fetchDestinations();
   }, []);
 
-  // Total featured destinations
-  const featuredCount = useMemo(() => {
-    return destinations.filter(
-      (destination) => destination.featured === true
-    ).length;
-  }, [destinations]);
+  // ==========================================
+  // DASHBOARD STATISTICS
+  // ==========================================
 
-  // Total categories
-  const categoryCount = useMemo(() => {
+  const totalDestinations = destinations.length;
+
+  const featuredDestinations = destinations.filter(
+    (destination) => destination.featured === true
+  ).length;
+
+  const categories = useMemo(() => {
     return new Set(
       destinations
         .map((destination) => destination.category)
@@ -48,7 +51,37 @@ const AdminDashboard = () => {
     ).size;
   }, [destinations]);
 
-  // Latest destinations
+  const averageRating = useMemo(() => {
+    if (destinations.length === 0) {
+      return 0;
+    }
+
+    const ratedDestinations = destinations.filter(
+      (destination) =>
+        destination.rating !== undefined &&
+        destination.rating !== null &&
+        destination.rating !== ""
+    );
+
+    if (ratedDestinations.length === 0) {
+      return 0;
+    }
+
+    const totalRating = ratedDestinations.reduce(
+      (sum, destination) =>
+        sum + Number(destination.rating),
+      0
+    );
+
+    return (
+      totalRating / ratedDestinations.length
+    ).toFixed(1);
+  }, [destinations]);
+
+  // ==========================================
+  // RECENT DESTINATIONS
+  // ==========================================
+
   const recentDestinations = useMemo(() => {
     return [...destinations]
       .sort(
@@ -56,63 +89,126 @@ const AdminDashboard = () => {
           new Date(b.createdAt || 0) -
           new Date(a.createdAt || 0)
       )
-      .slice(0, 6);
+      .slice(0, 5);
   }, [destinations]);
+
+  // ==========================================
+  // DELETE DESTINATION
+  // ==========================================
+
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this destination?"
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/destinations/${id}`
+      );
+
+      setDestinations((previousDestinations) =>
+        previousDestinations.filter(
+          (destination) =>
+            destination._id !== id
+        )
+      );
+    } catch (err) {
+      console.error(
+        "Error deleting destination:",
+        err
+      );
+
+      alert(
+        "Unable to delete destination. Please try again."
+      );
+    }
+  };
+
+  // ==========================================
+  // LOADING STATE
+  // ==========================================
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f7f5]">
+
+        <div className="text-center">
+
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-amber-400" />
+
+          <p className="mt-5 text-sm text-gray-500">
+            Loading admin dashboard...
+          </p>
+
+        </div>
+
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-[#101828]">
 
-      {/* =========================================
+      {/* ==========================================
           SIDEBAR
-      ========================================= */}
+      ========================================== */}
 
       <aside className="fixed left-0 top-0 hidden h-screen w-64 bg-[#050914] text-white lg:block">
 
         {/* Logo */}
+
         <div className="flex h-24 items-center px-8">
+
           <Link
             to="/"
             className="text-2xl font-bold tracking-wide"
           >
-            Wander<span className="text-amber-400">ly</span>
+            Wander
+            <span className="text-amber-400">
+              ly
+            </span>
           </Link>
+
         </div>
 
+
         {/* Navigation */}
+
         <nav className="px-4">
 
           <p className="px-4 pb-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/30">
             Administration
           </p>
 
-          {/* Dashboard */}
           <Link
             to="/admin"
-            className="flex items-center gap-4 rounded-2xl bg-amber-400 px-5 py-4 font-semibold text-[#050914]"
+            className="flex items-center rounded-2xl bg-amber-400 px-5 py-4 font-semibold text-[#050914]"
           >
-            <span>▦</span>
             Dashboard
           </Link>
 
-          {/* Destinations */}
           <Link
             to="/admin/destinations"
-            className="mt-2 flex items-center gap-4 rounded-2xl px-5 py-4 text-white/60 transition hover:bg-white/5 hover:text-white"
+            className="mt-2 flex items-center rounded-2xl px-5 py-4 text-white/60 transition hover:bg-white/5 hover:text-white"
           >
-            <span>◈</span>
             Destinations
           </Link>
 
         </nav>
 
-        {/* Bottom */}
+
+        {/* Bottom Navigation */}
+
         <div className="absolute bottom-6 left-4 right-4">
 
           <Link
             to="/destinations"
-            className="flex items-center gap-3 rounded-2xl border border-white/10 px-5 py-4 text-sm text-white/60 transition hover:border-amber-400/50 hover:text-amber-400"
+            className="flex items-center rounded-2xl border border-white/10 px-5 py-4 text-sm text-white/60 transition hover:border-amber-400/50 hover:text-amber-400"
           >
-            <span>←</span>
             Back to Website
           </Link>
 
@@ -121,18 +217,20 @@ const AdminDashboard = () => {
       </aside>
 
 
-      {/* =========================================
+      {/* ==========================================
           MAIN CONTENT
-      ========================================= */}
+      ========================================== */}
 
       <main className="lg:ml-64">
 
-        {/* Top Navbar */}
+        {/* Header */}
+
         <header className="sticky top-0 z-40 border-b border-gray-200 bg-[#f7f7f5]/90 backdrop-blur-xl">
 
-          <div className="flex h-20 items-center justify-between px-6 lg:px-10">
+          <div className="flex min-h-20 items-center justify-between px-6 lg:px-10">
 
             <div>
+
               <p className="text-sm text-gray-400">
                 Administration
               </p>
@@ -140,13 +238,14 @@ const AdminDashboard = () => {
               <h1 className="text-xl font-bold">
                 Dashboard
               </h1>
+
             </div>
 
             <Link
-              to="/"
-              className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold transition hover:border-amber-400 hover:bg-amber-400"
+              to="/admin/destinations/add"
+              className="rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-[#050914] transition hover:bg-amber-300"
             >
-              View Website
+              Add Destination
             </Link>
 
           </div>
@@ -154,308 +253,340 @@ const AdminDashboard = () => {
         </header>
 
 
-        {/* Dashboard Content */}
+        {/* ==========================================
+            DASHBOARD CONTENT
+        ========================================== */}
+
         <div className="px-6 py-10 lg:px-10 lg:py-12">
 
-          {/* Welcome */}
-          <div className="mb-10">
+          <div className="mx-auto max-w-7xl">
 
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-500">
-              Overview
-            </p>
+            {/* Page Introduction */}
 
-            <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
-              Welcome to Wanderly Admin
-            </h2>
+            <div>
 
-            <p className="mt-3 max-w-2xl text-gray-500">
-              Manage your travel destinations and keep your
-              website content up to date.
-            </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-500">
+                Overview
+              </p>
 
-          </div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+                Welcome to your dashboard
+              </h2>
 
-
-          {/* =========================================
-              STATISTICS
-          ========================================= */}
-
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-
-            {/* Total Destinations */}
-            <div className="rounded-[2rem] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Total Destinations
-                  </p>
-
-                  <h3 className="mt-4 text-4xl font-bold">
-                    {loading ? "—" : destinations.length}
-                  </h3>
-                </div>
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400/10 text-xl text-amber-500">
-                  ◈
-                </div>
-
-              </div>
-
-              <p className="mt-5 text-sm text-gray-400">
-                Destinations stored in MongoDB
+              <p className="mt-3 max-w-2xl text-gray-500">
+                Manage your travel destinations and
+                monitor your destination collection.
               </p>
 
             </div>
-
-
-            {/* Featured */}
-            <div className="rounded-[2rem] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Featured Destinations
-                  </p>
-
-                  <h3 className="mt-4 text-4xl font-bold">
-                    {loading ? "—" : featuredCount}
-                  </h3>
-                </div>
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400/10 text-xl text-amber-500">
-                  ★
-                </div>
-
-              </div>
-
-              <p className="mt-5 text-sm text-gray-400">
-                Destinations highlighted on the website
-              </p>
-
-            </div>
-
-
-            {/* Categories */}
-            <div className="rounded-[2rem] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-
-              <div className="flex items-start justify-between">
-
-                <div>
-                  <p className="text-sm font-medium text-gray-400">
-                    Categories
-                  </p>
-
-                  <h3 className="mt-4 text-4xl font-bold">
-                    {loading ? "—" : categoryCount}
-                  </h3>
-                </div>
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400/10 text-xl text-amber-500">
-                  ✦
-                </div>
-
-              </div>
-
-              <p className="mt-5 text-sm text-gray-400">
-                Different travel categories
-              </p>
-
-            </div>
-
-          </div>
-
-
-          {/* =========================================
-              QUICK ACTION
-          ========================================= */}
-
-          <div className="mt-10 rounded-[2rem] bg-[#050914] p-8 text-white md:p-10">
-
-            <div className="flex flex-col justify-between gap-7 md:flex-row md:items-center">
-
-              <div>
-
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-400">
-                  Manage content
-                </p>
-
-                <h3 className="mt-3 text-2xl font-bold md:text-3xl">
-                  Keep your destinations up to date
-                </h3>
-
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/50">
-                  Add new destinations, update existing information,
-                  or remove destinations that are no longer available.
-                </p>
-
-              </div>
-
-              <button
-                onClick={() => navigate("/admin/destinations")}
-                className="shrink-0 rounded-full bg-amber-400 px-7 py-4 font-semibold text-[#050914] transition hover:bg-amber-300"
-              >
-                Manage Destinations →
-              </button>
-
-            </div>
-
-          </div>
-
-
-          {/* =========================================
-              RECENT DESTINATIONS
-          ========================================= */}
-
-          <div className="mt-12">
-
-            <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-
-              <div>
-
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-500">
-                  Recent additions
-                </p>
-
-                <h3 className="mt-2 text-2xl font-bold">
-                  Latest Destinations
-                </h3>
-
-              </div>
-
-              <Link
-                to="/admin/destinations"
-                className="text-sm font-semibold text-gray-500 transition hover:text-amber-500"
-              >
-                View all destinations →
-              </Link>
-
-            </div>
-
-
-            {/* Loading */}
-            {loading && (
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="h-80 animate-pulse rounded-[2rem] bg-white"
-                  />
-                ))}
-
-              </div>
-            )}
 
 
             {/* Error */}
-            {!loading && error && (
-              <div className="rounded-[2rem] bg-white p-10 text-center text-red-500">
+
+            {error && (
+
+              <div className="mt-8 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
                 {error}
               </div>
+
             )}
 
 
-            {/* No Data */}
-            {!loading &&
-              !error &&
-              recentDestinations.length === 0 && (
-                <div className="rounded-[2rem] bg-white px-6 py-20 text-center">
+            {/* ==========================================
+                STATISTICS
+            ========================================== */}
 
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-400/10 text-3xl">
-                    🌍
-                  </div>
+            <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
 
-                  <h3 className="mt-5 text-xl font-bold">
+              {/* Total Destinations */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Total Destinations
+                </p>
+
+                <div className="mt-4 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {totalDestinations}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    All
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Destinations stored in MongoDB
+                </p>
+
+              </div>
+
+
+              {/* Featured Destinations */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Featured
+                </p>
+
+                <div className="mt-4 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {featuredDestinations}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    Featured
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Highlighted destinations
+                </p>
+
+              </div>
+
+
+              {/* Categories */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Categories
+                </p>
+
+                <div className="mt-4 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {categories}
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-600">
+                    Types
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Destination categories
+                </p>
+
+              </div>
+
+
+              {/* Average Rating */}
+
+              <div className="rounded-[2rem] bg-white p-7 shadow-sm">
+
+                <p className="text-sm font-medium text-gray-500">
+                  Average Rating
+                </p>
+
+                <div className="mt-4 flex items-end justify-between">
+
+                  <h3 className="text-4xl font-bold">
+                    {averageRating}
+                    <span className="text-xl text-gray-400">
+                      /5
+                    </span>
+                  </h3>
+
+                  <span className="rounded-full bg-amber-400/10 px-3 py-1 text-sm font-semibold text-amber-600">
+                    ★
+                  </span>
+
+                </div>
+
+                <p className="mt-4 text-sm text-gray-400">
+                  Average destination rating
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* ==========================================
+                RECENT DESTINATIONS
+            ========================================== */}
+
+            <div className="mt-12">
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+
+                <div>
+
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-500">
+                    Destination Management
+                  </p>
+
+                  <h2 className="mt-3 text-2xl font-bold md:text-3xl">
+                    Recent Destinations
+                  </h2>
+
+                </div>
+
+                <Link
+                  to="/admin/destinations"
+                  className="text-sm font-semibold text-amber-600 transition hover:text-amber-500"
+                >
+                  View all destinations →
+                </Link>
+
+              </div>
+
+
+              {/* Destination List */}
+
+              {recentDestinations.length === 0 ? (
+
+                <div className="mt-8 rounded-[2rem] bg-white px-6 py-20 text-center shadow-sm">
+
+                  <h3 className="text-xl font-bold">
                     No destinations yet
                   </h3>
 
-                  <p className="mt-2 text-gray-500">
-                    Add your first destination to get started.
+                  <p className="mt-3 text-gray-500">
+                    Add your first destination to start
+                    building your travel collection.
                   </p>
 
                   <Link
-                    to="/admin/destinations"
-                    className="mt-6 inline-flex rounded-full bg-[#050914] px-6 py-3 text-sm font-semibold text-white transition hover:bg-amber-400 hover:text-[#050914]"
+                    to="/admin/destinations/add"
+                    className="mt-7 inline-flex rounded-full bg-amber-400 px-7 py-3 font-semibold text-[#050914] transition hover:bg-amber-300"
                   >
                     Add Destination
                   </Link>
 
                 </div>
-              )}
 
+              ) : (
 
-            {/* Destination Cards */}
-            {!loading &&
-              !error &&
-              recentDestinations.length > 0 && (
+                <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {recentDestinations.map(
+                    (destination) => (
 
-                  {recentDestinations.map((destination) => (
+                      <article
+                        key={destination._id}
+                        className="overflow-hidden rounded-[2rem] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                      >
 
-                    <div
-                      key={destination._id}
-                      className="group overflow-hidden rounded-[2rem] bg-white shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl"
-                    >
+                        {/* Image */}
 
-                      {/* Image */}
-                      <div className="relative h-56 overflow-hidden">
+                        <div className="relative h-56 overflow-hidden">
 
-                        <img
-                          src={destination.imageUrl}
-                          alt={destination.name}
-                          className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                        />
+                          <img
+                            src={destination.imageUrl}
+                            alt={destination.name}
+                            className="h-full w-full object-cover transition duration-700 hover:scale-105"
+                          />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                          {/* Featured */}
 
-                        {/* Featured */}
-                        {destination.featured && (
-                          <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-[#050914]">
-                            Featured
+                          {destination.featured && (
+
+                            <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-[#050914]">
+                              Featured
+                            </span>
+
+                          )}
+
+                          {/* Category */}
+
+                          <span className="absolute right-4 top-4 rounded-full bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+                            {destination.category}
                           </span>
-                        )}
 
-                      </div>
+                        </div>
 
 
-                      {/* Content */}
-                      <div className="p-6">
+                        {/* Content */}
 
-                        <p className="text-xs font-semibold uppercase tracking-wider text-amber-500">
-                          {destination.category}
-                        </p>
+                        <div className="p-6">
 
-                        <h4 className="mt-2 text-xl font-bold">
-                          {destination.name}
-                        </h4>
+                          <p className="text-sm text-gray-400">
+                            {destination.location},{" "}
+                            {destination.country}
+                          </p>
 
-                        <p className="mt-2 text-sm text-gray-400">
-                          {destination.location},{" "}
-                          {destination.country}
-                        </p>
+                          <h3 className="mt-2 text-xl font-bold">
+                            {destination.name}
+                          </h3>
 
-                        <button
-                          onClick={() =>
-                            navigate("/admin/destinations")
-                          }
-                          className="mt-5 text-sm font-semibold text-gray-700 transition hover:text-amber-500"
-                        >
-                          Manage destination →
-                        </button>
 
-                      </div>
+                          {/* Rating and Popularity */}
 
-                    </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
 
-                  ))}
+                            <span className="rounded-full bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-600">
+                              ★{" "}
+                              {destination.rating !==
+                                undefined &&
+                              destination.rating !==
+                                null &&
+                              destination.rating !== ""
+                                ? Number(
+                                    destination.rating
+                                  ).toFixed(1)
+                                : "N/A"}
+                            </span>
+
+                            <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600">
+                              Popularity:{" "}
+                              {destination.popularity !==
+                                undefined &&
+                              destination.popularity !==
+                                null &&
+                              destination.popularity !== ""
+                                ? destination.popularity
+                                : "N/A"}
+                            </span>
+
+                          </div>
+
+
+                          {/* Actions */}
+
+                          <div className="mt-6 flex gap-3 border-t border-gray-100 pt-5">
+
+                            <Link
+                              to={`/admin/destinations/edit/${destination._id}`}
+                              className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-center text-sm font-semibold transition hover:border-amber-400 hover:bg-amber-400"
+                            >
+                              Edit
+                            </Link>
+
+                            <button
+                              onClick={() =>
+                                handleDelete(
+                                  destination._id
+                                )
+                              }
+                              className="flex-1 rounded-full border border-red-100 px-4 py-2.5 text-sm font-semibold text-red-500 transition hover:bg-red-500 hover:text-white"
+                            >
+                              Delete
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      </article>
+
+                    )
+                  )}
 
                 </div>
 
               )}
+
+            </div>
 
           </div>
 
